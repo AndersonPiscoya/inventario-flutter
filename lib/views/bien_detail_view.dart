@@ -1,0 +1,358 @@
+import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import '../services/session.dart';
+
+class BienDetailView extends StatefulWidget {
+  final String codigo;
+  const BienDetailView({super.key, required this.codigo});
+
+  @override
+  State<BienDetailView> createState() => _BienDetailViewState();
+}
+
+class _BienDetailViewState extends State<BienDetailView> {
+  final _formKey = GlobalKey<FormState>();
+  Map<String, dynamic>? _bien;
+  bool _loading = true;
+  String? _error;
+  String? _origen;
+
+  // Para los combos Estado y Ubicación
+  List<dynamic> _ubicaciones = [];
+  List<dynamic> _estados = [];
+  int? _idUbicacionSel;
+  int? _idEstadoSel;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTodo();
+  }
+
+  Future<void> _fetchTodo() async {
+    await _fetchDetalleBien();
+    await _fetchCombos();
+  }
+
+  Future<void> _fetchDetalleBien() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    final res = await ApiService.getDetalleBien(widget.codigo);
+
+    setState(() {
+      _loading = false;
+      if (res['success']) {
+        _bien = res['bien'];
+        _origen = res['origen'];
+        _idUbicacionSel = _bien?['idubicacion'];
+        _idEstadoSel = _bien?['id_estado_conservacion_bien'];
+
+        // Prints de depuración después de asignar los datos
+        print("[DEBUG] Carga de bien: $_bien");
+        print("[DEBUG] idbien: ${_bien?['idbien']}, idusuario: ${Session.idUsuario}");
+      } else {
+        _error = res['message'] ?? 'Bien no encontrado';
+      }
+    });
+  }
+
+  Future<void> _fetchCombos() async {
+    final resUbic = await ApiService.getUbicaciones();
+    final resEst = await ApiService.getEstados();
+    setState(() {
+      _ubicaciones = resUbic['ubicaciones'] ?? [];
+      _estados = resEst['estados'] ?? [];
+
+      // AUTOASIGNACIÓN de valores por defecto si están vacíos
+      if (_ubicaciones.isNotEmpty && _idUbicacionSel == null) {
+        _idUbicacionSel = _ubicaciones[0]['id_ubicacion'];
+      }
+      if (_estados.isNotEmpty && _idEstadoSel == null) {
+        _idEstadoSel = _estados[0]['id_estado'];
+      }
+    });
+  }
+
+
+  Future<void> _guardar() async {
+    if (_idUbicacionSel == null || _idEstadoSel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Seleccione un estado y una ubicación"), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    final now = DateTime.now();
+    final fecha = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final movimientoData = {
+      'idbien': _bien?['idbien'],
+      'tipo_mvto': 2, // Cambia según tu catálogo si es necesario
+      'fecha_mvto': fecha,
+      'detalle_tecnico': null,          // Opcional en null
+      'documento_sustentatorio': null,  // Opcional en null
+      'idubicacion': _idUbicacionSel,
+      'id_estado_conservacion_bien': _idEstadoSel,
+      'idusuario': Session.idUsuario,
+    };
+
+    print("[DEBUG POST /movimiento] $movimientoData");
+
+    // Solo valida los campos obligatorios
+    final camposObligatorios = [
+      movimientoData['idbien'],
+      movimientoData['tipo_mvto'],
+      movimientoData['fecha_mvto'],
+      movimientoData['idubicacion'],
+      movimientoData['id_estado_conservacion_bien'],
+      movimientoData['idusuario'],
+    ];
+    if (camposObligatorios.any((v) => v == null || (v is String && v.trim().isEmpty))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Todos los campos requeridos deben estar seleccionados o disponibles."), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final res = await ApiService.registrarMovimiento(movimientoData);
+
+    if (res['ok']) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Movimiento registrado"), backgroundColor: Colors.green),
+      );
+      await _fetchDetalleBien();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message'] ?? 'Error'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+
+  @override 
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFF4F7FE),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF4F7FE),
+        appBar: AppBar(
+          title: Text("Bien: ${widget.codigo}"),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: Center(child: Text(_error!)),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F7FE),
+      appBar: AppBar(
+        title: Text("Detalle Bien: ${widget.codigo}", style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchTodo,
+            tooltip: "Recargar datos",
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _InfoCard(
+                title: "Información General",
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _FormRow(label: "ID del Bien", value: _bien?['idbien']?.toString() ?? '', readOnly: true), // <<-- CORREGIDO AQUÍ
+                    _FormRow(label: "Código Patrimonial", value: _bien?['codigo_patrimonial'] ?? '', readOnly: true),
+                    _FormRow(label: "Denominación", value: _bien?['denominacion_bien'] ?? '', readOnly: true),
+                    _FormRow(label: "Tipo de Bien", value: _bien?['nombre_tipo_bien'] ?? '', readOnly: true),
+                    _FormRow(label: "Marca", value: _bien?['marca_bien'] ?? '', readOnly: true),
+                    _FormRow(label: "Modelo", value: _bien?['modelo_bien'] ?? '', readOnly: true),
+                    _FormRow(label: "Serie", value: _bien?['nserie_bien'] ?? '', readOnly: true),
+                    _FormRow(label: "Color", value: _bien?['color_bien'] ?? '', readOnly: true),
+                    _FormRow(label: "Dimensiones", value: _bien?['dimensiones_bien'] ?? '', readOnly: true),
+                    _FormRow(label: "Fecha de Registro", value: _bien?['fecha_registro']?.toString() ?? '', readOnly: true),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _InfoCard(
+                title: "Editar ubicación y estado",
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      value: _idUbicacionSel,
+                      items: _ubicaciones.map<DropdownMenuItem<int>>((u) =>
+                        DropdownMenuItem(
+                          value: u['id_ubicacion'],
+                          child: Text("${u['nombre_sede']} - ${u['ambiente']}"),
+                        )).toList(),
+                      onChanged: (nuevo) => setState(() => _idUbicacionSel = nuevo),
+                      decoration: const InputDecoration(labelText: 'Ubicación', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      value: _idEstadoSel,
+                      items: _estados.map<DropdownMenuItem<int>>((e) =>
+                        DropdownMenuItem(
+                          value: e['id_estado'],
+                          child: Text(e['nombre_estado']),
+                        )).toList(),
+                      onChanged: (nuevo) => setState(() => _idEstadoSel = nuevo),
+                      decoration: const InputDecoration(labelText: 'Estado', border: OutlineInputBorder()),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _guardar,
+                icon: const Icon(Icons.save),
+                label: const Text("Guardar cambio"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Widgets auxiliares
+class _InfoCard extends StatelessWidget {
+  final String title;
+  final Widget content;
+  const _InfoCard({
+    required this.title,
+    required this.content,
+    super.key,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.blue.withOpacity(0.1)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.info_outline,
+                      size: 18,
+                      color: Colors.blue[600],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue[800],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              content,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FormRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool readOnly;
+  const _FormRow({
+    required this.label,
+    required this.value,
+    this.readOnly = false,
+    super.key,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.grey[300]!,
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                value.isEmpty ? 'No disponible' : value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: readOnly ? Colors.grey[600] : Colors.black87,
+                  fontWeight: readOnly ? FontWeight.w400 : FontWeight.normal,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
