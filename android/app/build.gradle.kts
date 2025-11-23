@@ -38,11 +38,11 @@ android {
         }
     }
 
-    // BLOQUE PARA RENOMBRAR EL APK
+    // BLOQUE PARA RENOMBRAR EL APK (KTS compatible)
     applicationVariants.all {
         outputs.all {
-            val apkName = "InventarioPersonal-${name}.apk"
-            outputFileName = apkName
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                "Inventario IESPELA-${name}.apk"
         }
     }
 }
