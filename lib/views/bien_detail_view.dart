@@ -252,7 +252,7 @@ class _BienDetailViewState extends State<BienDetailView> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(
-                            "https://web-production-84102.up.railway.app/images/${_bien?['foto_bien']}",
+                            _bien?['foto_bien'] ?? '',
                             width: 220,
                             height: 220,
                             fit: BoxFit.cover,
@@ -266,6 +266,7 @@ class _BienDetailViewState extends State<BienDetailView> {
                             },
                           ),
                         ),
+
                       ],
                     ),
                   ),
