@@ -137,7 +137,7 @@ class _LoginViewState extends State<LoginView> with SingleTickerProviderStateMix
                             ],
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(10),
                             child: Image.asset(
                               'assets/images/mi_logo.png', // usa exactamente el nombre y la ruta dentro de tu proyecto
                               fit: BoxFit.cover,
@@ -151,7 +151,7 @@ class _LoginViewState extends State<LoginView> with SingleTickerProviderStateMix
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
-                                    borderRadius: BorderRadius.circular(30),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Center(
                                     child: Text(
