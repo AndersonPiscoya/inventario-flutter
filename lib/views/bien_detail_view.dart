@@ -179,7 +179,7 @@ class _BienDetailViewState extends State<BienDetailView> {
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _FormRow(label: "ID del Bien", value: _bien?['idbien']?.toString() ?? '', readOnly: true), // <<-- CORREGIDO AQUÍ
+                    // _FormRow(label: "ID del Bien", value: _bien?['idbien']?.toString() ?? '', readOnly: true), // ELIMINADO
                     _FormRow(label: "Código Patrimonial", value: _bien?['codigo_patrimonial'] ?? '', readOnly: true),
                     _FormRow(label: "Denominación", value: _bien?['denominacion_bien'] ?? '', readOnly: true),
                     _FormRow(label: "Tipo de Bien", value: _bien?['nombre_tipo_bien'] ?? '', readOnly: true),
@@ -188,7 +188,7 @@ class _BienDetailViewState extends State<BienDetailView> {
                     _FormRow(label: "Serie", value: _bien?['nserie_bien'] ?? '', readOnly: true),
                     _FormRow(label: "Color", value: _bien?['color_bien'] ?? '', readOnly: true),
                     _FormRow(label: "Dimensiones", value: _bien?['dimensiones_bien'] ?? '', readOnly: true),
-                    _FormRow(label: "Fecha de Registro", value: _bien?['fecha_registro']?.toString() ?? '', readOnly: true),
+                    _FormRow(label: "Fecha del último movimiento", value: (_bien?['fecha_mvto'] ?? 'Sin movimientos').toString(), readOnly: true),
                   ],
                 ),
               ),
