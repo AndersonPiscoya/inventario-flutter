@@ -234,6 +234,41 @@ class _BienDetailViewState extends State<BienDetailView> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
+              // ---- AQUÍ AGREGA EL WIDGET DE IMAGEN ----
+                if (_bien?['foto_bien'] != null && (_bien?['foto_bien'] as String).isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 24, bottom: 8),
+                    child: Column(
+                      children: [
+                        const Text(
+                          "Foto asociada al bien:",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            "https://web-production-84102.up.railway.app/images/${_bien?['foto_bien']}",
+                            width: 220,
+                            height: 220,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 200,
+                                height: 120,
+                                color: Colors.grey[300],
+                                child: const Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
             ],
           ),
         ),
