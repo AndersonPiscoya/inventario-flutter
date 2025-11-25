@@ -607,7 +607,7 @@ class HomeView extends StatelessWidget {
                               ),
                               const SizedBox(height: 22),
                               Text(
-                                "Ajustes",
+                                "Mantenimiento",
                                 style: GoogleFonts.poppins(
                                   fontSize: 17,
                                   fontWeight: FontWeight.w600,
@@ -616,7 +616,7 @@ class HomeView extends StatelessWidget {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                "Configuración",
+                                "Bienes y usuarios",
                                 style: GoogleFonts.poppins(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w400,
