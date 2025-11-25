@@ -236,7 +236,7 @@ class _BienDetailViewState extends State<BienDetailView> {
                       items: _ubicaciones.map<DropdownMenuItem<int>>((u) =>
                         DropdownMenuItem(
                           value: u['id_ubicacion'],
-                          child: Text("${u['nombre_sede']} - ${u['ambiente']}"),
+                          child: Text("${u['ambiente']}"),
                         )).toList(),
                       onChanged: (nuevo) => setState(() => _idUbicacionSel = nuevo),
                       decoration: const InputDecoration(labelText: 'Ambiente', border: OutlineInputBorder()),
