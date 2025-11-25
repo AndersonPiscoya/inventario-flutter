@@ -17,6 +17,10 @@ class _BienDetailViewState extends State<BienDetailView> {
   String? _error;
   String? _origen;
 
+  // Nuevos: para las áreas
+  List<dynamic> _areas = [];
+  int? _idAreaSel;
+
   // Para los combos Estado y Ubicación
   List<dynamic> _ubicaciones = [];
   List<dynamic> _estados = [];
@@ -49,38 +53,54 @@ class _BienDetailViewState extends State<BienDetailView> {
         _origen = res['origen'];
         _idUbicacionSel = _bien?['idubicacion'];
         _idEstadoSel = _bien?['id_estado_conservacion_bien'];
-
-        // Prints de depuración después de asignar los datos
+        // NUEVO: intentar inferir área del bien si tienes ese dato (depende de tu backend)
+        _idAreaSel = _bien?['idarea']; // asume que el backend retorna 'idarea' en bien
         print("[DEBUG] Carga de bien: $_bien");
-        print("[DEBUG] idbien: ${_bien?['idbien']}, idusuario: ${Session.idUsuario}");
       } else {
         _error = res['message'] ?? 'Bien no encontrado';
       }
     });
   }
 
-  Future<void> _fetchCombos() async {
-    final resUbic = await ApiService.getUbicaciones();
-    final resEst = await ApiService.getEstados();
+  // Nuevo: cargar áreas
+  Future<void> _fetchAreas() async {
+    final resAreas = await ApiService.getAreas();
+    setState(() {
+      _areas = resAreas['areas'] ?? [];
+      // Si no hay área seleccionada, elige la primera por defecto
+      if (_areas.isNotEmpty && _idAreaSel == null) {
+        _idAreaSel = _areas[0]['id_area'];
+      }
+    });
+  }
+
+  // Modificado: cargar ubicaciones filtrando por área seleccionada
+  Future<void> _fetchUbicacionesPorArea([int? idArea]) async {
+    final resUbic = await ApiService.getUbicaciones(idArea ?? _idAreaSel);
     setState(() {
       _ubicaciones = resUbic['ubicaciones'] ?? [];
-      _estados = resEst['estados'] ?? [];
-
-      // AUTOASIGNACIÓN de valores por defecto si están vacíos
       if (_ubicaciones.isNotEmpty && _idUbicacionSel == null) {
         _idUbicacionSel = _ubicaciones[0]['id_ubicacion'];
       }
+    });
+  }
+
+  Future<void> _fetchCombos() async {
+    await _fetchAreas();
+    await _fetchUbicacionesPorArea();
+    final resEst = await ApiService.getEstados();
+    setState(() {
+      _estados = resEst['estados'] ?? [];
       if (_estados.isNotEmpty && _idEstadoSel == null) {
         _idEstadoSel = _estados[0]['id_estado'];
       }
     });
   }
 
-
   Future<void> _guardar() async {
     if (_idUbicacionSel == null || _idEstadoSel == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Seleccione un estado y una ubicación"), backgroundColor: Colors.red),
+        const SnackBar(content: Text("Seleccione un área, ambiente y un estado"), backgroundColor: Colors.red),
       );
       return;
     }
@@ -88,18 +108,15 @@ class _BienDetailViewState extends State<BienDetailView> {
     final fecha = "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     final movimientoData = {
       'idbien': _bien?['idbien'],
-      'tipo_mvto': 2, // Cambia según tu catálogo si es necesario
+      'tipo_mvto': 2,
       'fecha_mvto': fecha,
-      'detalle_tecnico': null,          // Opcional en null
-      'documento_sustentatorio': null,  // Opcional en null
+      'detalle_tecnico': null,
+      'documento_sustentatorio': null,
       'idubicacion': _idUbicacionSel,
       'id_estado_conservacion_bien': _idEstadoSel,
       'idusuario': Session.idUsuario,
     };
 
-    print("[DEBUG POST /movimiento] $movimientoData");
-
-    // Solo valida los campos obligatorios
     final camposObligatorios = [
       movimientoData['idbien'],
       movimientoData['tipo_mvto'],
@@ -128,7 +145,6 @@ class _BienDetailViewState extends State<BienDetailView> {
       );
     }
   }
-
 
   @override 
   Widget build(BuildContext context) {
@@ -179,7 +195,6 @@ class _BienDetailViewState extends State<BienDetailView> {
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // _FormRow(label: "ID del Bien", value: _bien?['idbien']?.toString() ?? '', readOnly: true), // ELIMINADO
                     _FormRow(label: "Código Patrimonial", value: _bien?['codigo_patrimonial'] ?? '', readOnly: true),
                     _FormRow(label: "Denominación", value: _bien?['denominacion_bien'] ?? '', readOnly: true),
                     _FormRow(label: "Tipo de Bien", value: _bien?['nombre_tipo_bien'] ?? '', readOnly: true),
@@ -199,6 +214,24 @@ class _BienDetailViewState extends State<BienDetailView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     DropdownButtonFormField<int>(
+                      value: _idAreaSel,
+                      items: _areas.map<DropdownMenuItem<int>>((a) =>
+                        DropdownMenuItem(
+                          value: a['id_area'],
+                          child: Text(a['nombre_area']),
+                        )).toList(),
+                      onChanged: (nuevoArea) {
+                        setState(() {
+                          _idAreaSel = nuevoArea;
+                          _idUbicacionSel = null;
+                          _ubicaciones = [];
+                        });
+                        _fetchUbicacionesPorArea(nuevoArea);
+                      },
+                      decoration: const InputDecoration(labelText: 'Área', border: OutlineInputBorder()),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
                       value: _idUbicacionSel,
                       items: _ubicaciones.map<DropdownMenuItem<int>>((u) =>
                         DropdownMenuItem(
@@ -206,7 +239,7 @@ class _BienDetailViewState extends State<BienDetailView> {
                           child: Text("${u['nombre_sede']} - ${u['ambiente']}"),
                         )).toList(),
                       onChanged: (nuevo) => setState(() => _idUbicacionSel = nuevo),
-                      decoration: const InputDecoration(labelText: 'Ubicación', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(labelText: 'Ambiente', border: OutlineInputBorder()),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
@@ -234,42 +267,40 @@ class _BienDetailViewState extends State<BienDetailView> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
-              // ---- AQUÍ AGREGA EL WIDGET DE IMAGEN ----
-                if (_bien?['foto_bien'] != null && (_bien?['foto_bien'] as String).isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 24, bottom: 8),
-                    child: Column(
-                      children: [
-                        const Text(
-                          "Foto asociada al bien:",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                          ),
+              if (_bien?['foto_bien'] != null && (_bien?['foto_bien'] as String).isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24, bottom: 8),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Foto asociada al bien:",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
                         ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            _bien?['foto_bien'] ?? '',
-                            width: 220,
-                            height: 220,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 200,
-                                height: 120,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
-                              );
-                            },
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          _bien?['foto_bien'] ?? '',
+                          width: 220,
+                          height: 220,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 200,
+                              height: 120,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+                            );
+                          },
                         ),
-
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                ),
             ],
           ),
         ),
@@ -278,7 +309,7 @@ class _BienDetailViewState extends State<BienDetailView> {
   }
 }
 
-// Widgets auxiliares
+// Widgets auxiliares (igual, sin cambios):
 class _InfoCard extends StatelessWidget {
   final String title;
   final Widget content;

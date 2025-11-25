@@ -9,6 +9,57 @@ class ApiService {
   // Base URL del backend Node.js (tu IP local o pública)
 static const String _baseUrl = 'https://web-production-84102.up.railway.app';
 
+ // ========== NUEVOS MÉTODOS PARA ÁREAS Y UBICACIONES DEPENDIENTES ==========
+
+  // Listar áreas - GET /areas
+  static Future<Map<String, dynamic>> getAreas() async {
+    try {
+      final uri = Uri.parse('$_baseUrl/areas');
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+      final data = jsonDecode(response.body);
+      return {
+        'statusCode': response.statusCode,
+        'data': data,
+        'ok': response.statusCode == 200 && data['ok'] == true,
+        'areas': data['areas'],
+        'total': data['total']
+      };
+    } catch (e) {
+      return {
+        'statusCode': 0,
+        'ok': false,
+        'areas': <dynamic>[],
+        'message': 'Error al listar áreas: $e'
+      };
+    }
+  }
+
+  // Listar ubicaciones filtrando por área - GET /ubicaciones?id_area=
+  static Future<Map<String, dynamic>> getUbicaciones([int? idArea]) async {
+    try {
+      String url = '$_baseUrl/ubicaciones';
+      if (idArea != null) url += '?id_area=$idArea';
+      final uri = Uri.parse(url);
+      final response = await http.get(uri, headers: {'Content-Type': 'application/json'});
+      final data = jsonDecode(response.body);
+      return {
+        'statusCode': response.statusCode,
+        'data': data,
+        'ok': response.statusCode == 200 && data['ok'] == true,
+        'ubicaciones': data['ubicaciones'],
+        'total': data['total']
+      };
+    } catch (e) {
+      return {
+        'statusCode': 0,
+        'ok': false,
+        'ubicaciones': <dynamic>[],
+        'message': 'Error al listar ubicaciones: $e'
+      };
+    }
+  }
+
+
   // ========== AUTENTICACIÓN ==========
 
   // Login - POST /auth/login
@@ -254,35 +305,6 @@ static const String _baseUrl = 'https://web-production-84102.up.railway.app';
 
 
     // ========== NUEVOS MÉTODOS PARA MOVIMIENTOS Y COMBOS ==========
-
-  // Listar ubicaciones - GET /ubicaciones
-  static Future<Map<String, dynamic>> getUbicaciones() async {
-    try {
-      final uri = Uri.parse('$_baseUrl/ubicaciones');
-      final response = await http.get(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      final data = jsonDecode(response.body);
-      return {
-        'statusCode': response.statusCode,
-        'data': data,
-        'success': response.statusCode == 200 && data['ok'] == true,
-        'ubicaciones': data['ubicaciones'],
-        'message': data['message'] ?? '',
-      };
-    } catch (e) {
-      return {
-        'statusCode': 0,
-        'data': {'ok': false, 'message': 'Error al listar ubicaciones: $e'},
-        'success': false,
-        'ubicaciones': <dynamic>[],
-        'message': 'Error al listar ubicaciones',
-      };
-    }
-  }
-
   // Listar estados de bien - GET /estados
   static Future<Map<String, dynamic>> getEstados() async {
     try {
