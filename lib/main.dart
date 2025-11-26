@@ -15,37 +15,35 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Inventario App',
-      theme: FlexThemeData.light(
-        scheme: FlexScheme.blue,
-        appBarStyle: FlexAppBarStyle.background,
-      ),
-      darkTheme: FlexThemeData.dark(
-        scheme: FlexScheme.blue,
-        appBarStyle: FlexAppBarStyle.background,
-      ),
-      themeMode: ThemeMode.system,
-      
-      // Rutas nombradas para navegación
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => const LoginView(),
-        '/home': (context) {
-          // Recibe argumentos (datos del usuario) desde login
-          final user = ModalRoute.of(context)?.settings.arguments;
-          return HomeView(user: user);
+    // MODIFICACIÓN: envolvemos el MaterialApp en SessionActivityDetector
+    return SessionActivityDetector(
+      child: MaterialApp(
+        title: 'Inventario App',
+        theme: FlexThemeData.light(
+          scheme: FlexScheme.blue,
+          appBarStyle: FlexAppBarStyle.background,
+        ),
+        darkTheme: FlexThemeData.dark(
+          scheme: FlexScheme.blue,
+          appBarStyle: FlexAppBarStyle.background,
+        ),
+        themeMode: ThemeMode.system,
+        initialRoute: '/login',
+        routes: {
+          '/login': (context) => const LoginView(),
+          '/home': (context) {
+            final user = ModalRoute.of(context)?.settings.arguments;
+            return HomeView(user: user);
+          },
+          '/scanner': (context) => const ScannerView(),
+          '/bien_detalle': (context) {
+            final codigo = ModalRoute.of(context)!.settings.arguments as String;
+            return BienDetailView(codigo: codigo);
+          },
         },
-        '/scanner': (context) => const ScannerView(),
-        '/bien_detalle': (context) {
-          final codigo = ModalRoute.of(context)!.settings.arguments as String;
-          return BienDetailView(codigo: codigo);
-        },
-      },
+      ),
     );
   }
-  
 }

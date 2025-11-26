@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 import '../services/session.dart'; // Importa la sesión
+import '../services/session_timeout.dart'; // <- AGREGA ESTA LÍNEA
+
 
 
 class LoginView extends StatefulWidget {
@@ -60,6 +62,9 @@ class _LoginViewState extends State<LoginView> with SingleTickerProviderStateMix
       // Guarda los datos del usuario logeado en la sesión global
       Session.idUsuario = result['user']['id_usuario'];
       Session.nombreUsuario = result['user']['nombre_usuario'] ?? '';
+
+      // INICIO DEL TIMEOUT: ¡Línea clave!
+      SessionTimeoutService.initializeWithContext(context);
       
       if (mounted) {
         Navigator.pushReplacementNamed(
